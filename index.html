@@ -303,8 +303,8 @@
                         const photoName = `photo${i.toString().padStart(2, '0')}.${ext}`;
                         this.photos.push({
                             name: photoName,
-                            path: `photos_mini/${photoNameMini}`,
-                            path_large: `photos/${photoName}`,
+                            path: `photos_mini_/${photoNameMini}`,
+                            path_large: `photos_/${photoName}`,
                             audioPath: `audio/photo${i.toString().padStart(2, '0')}.m4a`,
                             isLarge: i === 9 || i === 42 // Make photos 10 and 25 the large 2x2 tiles
                         });
