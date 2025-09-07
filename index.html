@@ -50,15 +50,9 @@
             }
         }
 
-        @media (min-width: 1025px) and (max-width: 1440px) {
+        @media (min-width: 1025px) and (max-width: 1920px) {
             .gallery-grid {
                 grid-template-columns: repeat(8, 1fr);
-            }
-        }
-
-        @media (min-width: 1441px) and (max-width: 1920px) {
-            .gallery-grid {
-                grid-template-columns: repeat(7, 1fr);
             }
         }
 
@@ -115,9 +109,9 @@
             z-index: 1000;
             left: 0;
             top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(5px);
         }
 
@@ -129,21 +123,23 @@
         }
 
         .modal-content {
-            max-width: 90%;
-            max-height: 90%;
-            border-radius: 8px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
 
         .modal img {
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             object-fit: contain;
             border-radius: 8px;
         }
 
         .close-modal {
-            position: absolute;
+            position: fixed;
             top: 20px;
             right: 30px;
             color: white;
@@ -153,10 +149,20 @@
             user-select: none;
             z-index: 1001;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
         }
 
         .close-modal:hover {
             color: #ff6b6b;
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
         }
 
         .audio-indicator {
@@ -181,6 +187,26 @@
             height: 50vh;
             font-size: 18px;
             color: #888;
+        }
+
+        /* Modal navigation hints */
+        .modal-nav-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1001;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-nav-hint:hover {
+            opacity: 1;
         }
 
         @keyframes fadeIn {
@@ -209,6 +235,14 @@
             animation: pulse 1s infinite;
             background: #ff6b6b;
         }
+
+        /* Prevent scrolling when modal is open */
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 
@@ -224,6 +258,7 @@
         <div class="modal-content">
             <img id="modalImage" src="" alt="">
         </div>
+        <div class="modal-nav-hint">Press ESC or click ✕ to close</div>
     </div>
 
     <audio id="audioPlayer" preload="none"></audio>
@@ -258,12 +293,14 @@
                     // Try different extensions for each photo
                     let photoFound = false;
                     for (const ext of photoExtensions) {
+                        const photoNameMini = `photo${i.toString().padStart(2, '0')}_mini.${ext}`;
                         const photoName = `photo${i.toString().padStart(2, '0')}.${ext}`;
                         this.photos.push({
                             name: photoName,
-                            path: `photos/${photoName}`,
+                            path: `photos_mini/${photoNameMini}`,
+                            path_large: `photos/${photoName}`,
                             audioPath: `audio/photo${i.toString().padStart(2, '0')}.m4a`,
-                            isLarge: i === 10 || i === 25 // Make photos 10 and 25 the large 2x2 tiles
+                            isLarge: i === 9 || i === 42 // Make photos 10 and 25 the large 2x2 tiles
                         });
                         break;
                     }
@@ -303,7 +340,7 @@
                 });
 
                 this.modal.addEventListener('click', (e) => {
-                    if (e.target === this.modal) {
+                    if (e.target === this.modal || e.target.classList.contains('modal-content')) {
                         this.closeModal();
                     }
                 });
@@ -323,13 +360,25 @@
                 this.audioPlayer.addEventListener('error', () => {
                     console.log('Audio file not found or cannot be played');
                 });
+
+                // Handle window resize to maintain full size
+                window.addEventListener('resize', () => {
+                    if (this.modal.classList.contains('active')) {
+                        this.updateModalSize();
+                    }
+                });
             }
 
             openModal(index) {
                 const photo = this.photos[index];
-                this.modalImage.src = photo.path;
+                this.modalImage.src = photo.path_large;
                 this.modal.classList.add('active');
-                document.body.style.overflow = 'hidden';
+                document.body.classList.add('modal-open');
+
+                // Ensure full size after image loads
+                this.modalImage.onload = () => {
+                    this.updateModalSize();
+                };
 
                 // Play audio
                 this.playAudio(photo.audioPath, index);
@@ -337,8 +386,18 @@
 
             closeModal() {
                 this.modal.classList.remove('active');
-                document.body.style.overflow = 'auto';
+                document.body.classList.remove('modal-open');
                 this.stopAudio();
+            }
+
+            updateModalSize() {
+                // Ensure the image fits within viewport while showing the complete image
+                this.modalImage.style.maxWidth = '100vw';
+                this.modalImage.style.maxHeight = '100vh';
+                this.modalImage.style.width = 'auto';
+                this.modalImage.style.height = 'auto';
+                this.modalImage.style.objectFit = 'contain';
+                this.modalImage.style.objectPosition = 'center';
             }
 
             playAudio(audioPath, index) {
